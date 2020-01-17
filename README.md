@@ -100,6 +100,7 @@ libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f0173cc4000)
 `config.json` example
 ```json
 {
+    "CPUs": 2,
     "WorkerPoolSize": 3,
     "Source": {
         "Endpoint": "http://11.11.11.111:7480",

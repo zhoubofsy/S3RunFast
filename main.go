@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -77,8 +78,10 @@ func main() {
 	conf := new(Config)
 	conf.load("./config.json")
 
+	cpus := conf.CPUs
 	wkpoolsz := conf.WorkerPoolSz
 
+	runtime.GOMAXPROCS(cpus)
 	// init dispatcher
 	dp := new(Dispatcher)
 	dp.init(wkpoolsz)
@@ -118,6 +121,7 @@ func main() {
 		bkt_sync.do_sync(current_bkt, current_bkt)
 		sts := new(Stat)
 		sts.Init(current_bkt)
+		defer sts.Uninit()
 		var marker *string
 		for true {
 			obj_input := &s3.ListObjectsInput{

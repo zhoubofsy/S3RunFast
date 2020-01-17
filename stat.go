@@ -29,6 +29,12 @@ type Stat struct {
 func (this *Stat) Init(bkt string) {
 	this.s = new(StatRocksDB)
 	this.n = bkt
+	// Open DB
+	this.s.OpenStatDB(bkt)
+}
+
+func (this *Stat) Uninit() {
+	this.s.CloseStatDB()
 }
 
 func (this *Stat) UpdateLastMT(bkt string, obj string, ts int64) error {
@@ -36,16 +42,18 @@ func (this *Stat) UpdateLastMT(bkt string, obj string, ts int64) error {
 	if this.n != bkt {
 		fmt.Printf("UpdateLastMT bucket inconsistent (%v , %v)\n", this.n, bkt)
 	}
-	// Open DB
-	err := this.s.OpenStatDB(bkt)
-	if err != nil {
-		return err
-	}
-	defer this.s.CloseStatDB()
+	/*
+		// Open DB
+		err := this.s.OpenStatDB(bkt)
+		if err != nil {
+			return err
+		}
+		defer this.s.CloseStatDB()
+	*/
 
 	// Update
 	buf := Int64ToBytes(ts)
-	err = this.s.Put(&obj, buf)
+	err := this.s.Put(&obj, buf)
 
 	return err
 }
@@ -56,16 +64,17 @@ func (this *Stat) GetLastMT(bkt string, obj string) (int64, error) {
 	}
 	var ts int64
 	ts = 0
-	// Open Db
-	err := this.s.OpenStatDB(bkt)
-	if err != nil {
-		return ts, err
-	}
-	defer this.s.CloseStatDB()
-
+	/*
+		// Open Db
+		err := this.s.OpenStatDB(bkt)
+		if err != nil {
+			return ts, err
+		}
+		defer this.s.CloseStatDB()
+	*/
 	// Get Value
 	buf := make([]byte, 20)
-	err = this.s.Get(&obj, buf)
+	err := this.s.Get(&obj, buf)
 	if err == nil {
 		ts = BytesToInt64(buf)
 	}
@@ -80,8 +89,10 @@ type StatDB interface {
 }
 
 type StatRocksDB struct {
-	db *gorocksdb.DB
-	l  sync.Mutex
+	db   *gorocksdb.DB
+	l    sync.Mutex
+	wopt *gorocksdb.WriteOptions
+	ropt *gorocksdb.ReadOptions
 }
 
 func (this *StatRocksDB) OpenStatDB(dbname string) error {
@@ -90,36 +101,38 @@ func (this *StatRocksDB) OpenStatDB(dbname string) error {
 	opts.SetCreateIfMissing(true)
 	opts.SetCompression(gorocksdb.NoCompression)
 	db_path := "dbs/" + dbname
-	this.l.Lock()
 	this.db, err = gorocksdb.OpenDb(opts, db_path)
 	if err != nil {
 		fmt.Printf("StatRocksDB OpenDb %v error %v\n", db_path, err)
 	}
+	this.wopt = gorocksdb.NewDefaultWriteOptions()
+	this.ropt = gorocksdb.NewDefaultReadOptions()
+	//ropt.SetFillCache(false)
 	return err
 }
 
 func (this *StatRocksDB) CloseStatDB() {
 	this.db.Close()
-	this.l.Unlock()
 }
 
 func (this *StatRocksDB) Put(key *string, value []byte) error {
-	wopt := gorocksdb.NewDefaultWriteOptions()
-	err := this.db.Put(wopt, []byte(*key), value)
+	this.l.Lock()
+	err := this.db.Put(this.wopt, []byte(*key), value)
 	if err != nil {
 		fmt.Printf("StatRocksDB Put key: %v , error : %v \n", key, err)
 	}
+	this.l.Unlock()
 	//fmt.Printf("StatRocksDB Put key: %v, value: %v\n", *key, value)
 	return err
 }
 
 func (this *StatRocksDB) Get(key *string, value []byte) error {
-	ropt := gorocksdb.NewDefaultReadOptions()
-	//ropt.SetFillCache(false)
-	val, err := this.db.Get(ropt, []byte(*key))
+	this.l.Lock()
+	val, err := this.db.Get(this.ropt, []byte(*key))
 	if err != nil {
 		fmt.Printf("StatRocksDB Get key: %v , error : %v \n", key, err)
 	}
+	this.l.Unlock()
 	defer val.Free()
 	if val != nil && val.Exists() {
 		copy(value, val.Data())

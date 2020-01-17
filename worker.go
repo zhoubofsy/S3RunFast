@@ -17,6 +17,7 @@ type Job struct {
 }
 
 func worker(id int, j *Job, d *Dispatcher) {
+	worker_start_tm := time.Now().UnixNano()
 	defer d.complete(id)
 	if j.Src == nil || j.Dest == nil {
 		return
@@ -28,9 +29,12 @@ func worker(id int, j *Job, d *Dispatcher) {
 	if obj_ts == 0 {
 		return
 	}
+	db_start_tm := time.Now().UnixNano()
 	sts_ts, _ := st.GetLastMT(j.Bucket, j.Object)
+	dbrt := time.Now().UnixNano() - db_start_tm
 	if obj_ts == sts_ts {
-		fmt.Printf("worker(%d) NO need to move bucket: %v, object: %v, ts: (%d, %d)\n", id, j.Bucket, j.Object, obj_ts, sts_ts)
+		worker_tm := time.Now().UnixNano() - worker_start_tm
+		fmt.Printf("worker(%d) NO need to move bucket: %v, object: %v, ts: (%d, %d) [dbrt: %d, workerTM: %d]\n", id, j.Bucket, j.Object, obj_ts, sts_ts, dbrt, worker_tm)
 		return
 	}
 	//fmt.Printf("worker(%d) prepare move bucket: %v, object: %v, ts: (%d, %d)\n", id, j.Bucket, j.Object, obj_ts, sts_ts)
@@ -47,21 +51,29 @@ func worker(id int, j *Job, d *Dispatcher) {
 		err = j.Dest.PutFromBuf(j.Bucket, j.Object, &buffer)
 		if err != nil {
 			fmt.Printf("Upload object[%v/%v] error : %v\n", j.Bucket, j.Object, err)
+			return
 		}
 	} else {
+		defer os.Remove(file)
 		// upload file via multipart
 		err = j.Dest.PutFromFile(j.Bucket, j.Object, file)
 		if err != nil {
 			fmt.Printf("Upload object[%v/%v] from %v , error : %v \n", j.Bucket, j.Object, file, err)
+			return
 		}
-		err = os.Remove(file)
-		if err != nil {
-			fmt.Printf("Remove file: %v , error ! %v \n", file, err)
-		}
+		/*
+			err = os.Remove(file)
+			if err != nil {
+				fmt.Printf("Remove file: %v , error ! %v \n", file, err)
+			}
+		*/
 	}
 	// update stat
+	db_start_tm = time.Now().UnixNano()
 	err = st.UpdateLastMT(j.Bucket, j.Object, obj_ts)
-	fmt.Printf("worker(%d) move bucket: %v, object: %v \n", id, j.Bucket, j.Object)
+	dbwt := time.Now().UnixNano() - db_start_tm
+	worker_tm := time.Now().UnixNano() - worker_start_tm
+	fmt.Printf("worker(%d) move bucket: %v, object: %v [dbrt: %d, dbwt: %d, workerTM: %d]\n", id, j.Bucket, j.Object, dbrt, dbwt, worker_tm)
 	//time.Sleep(3 * time.Second)
 }
 

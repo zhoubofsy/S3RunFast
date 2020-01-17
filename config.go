@@ -13,6 +13,7 @@ type RGWConfig struct {
 }
 
 type Config struct {
+	CPUs         int       `json:"CPUs"`
 	WorkerPoolSz int       `json:"WorkerPoolSize"`
 	Src          RGWConfig `json:"Source"`
 	Dest         RGWConfig `json:"Destination"`
