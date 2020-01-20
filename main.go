@@ -50,15 +50,13 @@ func (this *SyncBucket) sync_policy(s string, d string) error {
 			case 404:
 				{
 					// try delete dest bucket policy
-					_, err = this.Dest.get_bucket_policy(d)
-					if err == nil {
-						this.Dest.del_bucket_policy(d)
-					}
+					this.Dest.del_bucket_policy(d)
+					return nil
 				}
 			}
-			return nil
 		}
 		fmt.Printf("sync_policy from %v to %v error : %v\n", s, d, err)
+		return err
 	}
 	// 200,OK Set dest bucket policy
 	err = this.Dest.put_bucket_policy(d, policy)
