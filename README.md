@@ -1,4 +1,5 @@
-# S3Sooner
+# S3RunFast
+来自[S3Sooner](https://github.com/zhoubofsy/s3sooner.git)
 
 Improve performance of s3mover
 

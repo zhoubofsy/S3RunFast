@@ -99,7 +99,7 @@ func (this *StatRocksDB) OpenStatDB(dbname string) error {
 	var err error
 	opts := gorocksdb.NewDefaultOptions()
 	opts.SetCreateIfMissing(true)
-	opts.SetCompression(gorocksdb.NoCompression)
+	opts.SetCompression(gorocksdb.CompressionType(0))
 	db_path := "dbs/" + dbname
 	this.db, err = gorocksdb.OpenDb(opts, db_path)
 	if err != nil {
