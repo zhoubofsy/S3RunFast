@@ -1,0 +1,67 @@
+# 系统配置
+system:
+  log_level: "info"
+  log_file: "logs/s3runfast.log"
+  metrics_addr: ":9091" # Default port for metrics
+
+# 协调器配置（使用etcd作为分布式协调服务）
+coordinator:
+  endpoints:
+    - "localhost:2379"
+  dial_timeout: 5s
+  prefix: "/s3runfast"
+
+# 消息队列配置（使用Redis作为消息队列）
+queue:
+  redis:
+    addr: "localhost:6379"
+    password: ""
+    db: 0
+  bucket_creation_queue: "bucket_creation_tasks"
+  object_migration_queue: "object_migration_tasks"
+  bucket_creation_topic: "bucket_creation_events"
+
+# 存储配置（使用Redis作为状态存储）
+storage:
+  redis:
+    addr: "localhost:6379"
+    password: ""
+    db: 1
+  object_status_prefix: "object_status:"
+  bucket_status_prefix: "bucket_status:"
+
+# 源S3配置
+source:
+  endpoint: "http://source-s3-endpoint"
+  access_key: "your-source-access-key"
+  secret_key: "your-source-secret-key"
+  region: "default"
+  force_path_style: true
+
+# 目标S3配置
+destination:
+  endpoint: "http://destination-s3-endpoint"
+  access_key: "your-destination-access-key"
+  secret_key: "your-destination-secret-key"
+  region: "default"
+  force_path_style: true
+
+# Controller配置
+controller:
+  worker_pool_size: 10
+  batch_size: 1000
+  max_retries: 3
+  retry_delay: 5s
+
+# Worker配置
+worker:
+  bucket_creation:
+    pool_size: 2
+    max_retries: 3
+    retry_delay: 5s
+  object_migration:
+    pool_size: 10
+    max_retries: 3
+    retry_delay: 5s
+    chunk_size: 5242880  # 5MB
+    temp_dir: "/tmp/s3runfast" 
